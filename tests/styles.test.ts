@@ -176,6 +176,13 @@ describe('styles', () => {
     it('parses 3-digit hex without #', () => {
       expect(hexToRgb('f80')).toEqual([255, 136, 0]);
     });
+
+    it('throws on invalid hex string', () => {
+      expect(() => hexToRgb('xyz')).toThrow('Invalid hex color');
+      expect(() => hexToRgb('#gggggg')).toThrow('Invalid hex color');
+      expect(() => hexToRgb('')).toThrow('Invalid hex color');
+      expect(() => hexToRgb('12345')).toThrow('Invalid hex color');
+    });
   });
 
   describe('combined styles object', () => {

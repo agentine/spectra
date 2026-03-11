@@ -145,6 +145,38 @@ describe('detect', () => {
     });
   });
 
+  describe('--color flag', () => {
+    it('--color argv returns level 1', () => {
+      process.argv = ['node', 'script.js', '--color'];
+      setEnv({});
+      expect(colorLevel(ttyStream)).toBe(1);
+    });
+  });
+
+  describe('FORCE_COLOR=false', () => {
+    it('FORCE_COLOR=false returns level 0', () => {
+      setEnv({ FORCE_COLOR: 'false' });
+      expect(colorLevel(ttyStream)).toBe(0);
+    });
+  });
+
+  describe('terminal program detection', () => {
+    it('iTerm version < 3 returns level 2', () => {
+      setEnv({ TERM_PROGRAM: 'iTerm.app', TERM_PROGRAM_VERSION: '2.9.3' });
+      expect(colorLevel(ttyStream)).toBe(2);
+    });
+
+    it('iTerm version >= 3 returns level 3', () => {
+      setEnv({ TERM_PROGRAM: 'iTerm.app', TERM_PROGRAM_VERSION: '3.4.0' });
+      expect(colorLevel(ttyStream)).toBe(3);
+    });
+
+    it('Apple_Terminal returns level 2', () => {
+      setEnv({ TERM_PROGRAM: 'Apple_Terminal' });
+      expect(colorLevel(ttyStream)).toBe(2);
+    });
+  });
+
   describe('detectColors', () => {
     it('returns ColorSupport object', () => {
       setEnv({ FORCE_COLOR: '3' });

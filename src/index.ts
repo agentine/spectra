@@ -250,7 +250,7 @@ function createBuilder(pairs: CodePair[]): SpectraInstance {
       const styleChain = styleStr.split('.');
       let instance: SpectraInstance = spectra;
       for (const s of styleChain) {
-        if (s in allStaticStyles) {
+        if (Object.hasOwn(allStaticStyles, s)) {
           instance = (instance as unknown as Record<string, SpectraInstance>)[s];
         }
       }

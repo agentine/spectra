@@ -52,6 +52,31 @@ describe('wrapAnsi', () => {
       expect(strip(lines[0])).toBe('hello');
       expect(strip(lines[1])).toBe('world');
     });
+
+    it('re-applies ANSI state correctly on wrapped lines', () => {
+      const styled = '\x1b[31mhello world\x1b[39m';
+      const result = wrapAnsi(styled, 6);
+      const lines = result.split('\n');
+      // Second line should start with the red code re-applied
+      expect(lines[1]).toMatch(/^\x1b\[31m/);
+    });
+  });
+
+  describe('trim option', () => {
+    it('trim: false preserves trailing whitespace', () => {
+      const result = wrapAnsi('hello    world', 8, { trim: false });
+      const lines = result.split('\n');
+      // With trim: false, trailing spaces on first line should be preserved
+      expect(lines[0]).toMatch(/\s$/);
+    });
+  });
+
+  describe('tab handling', () => {
+    it('treats tab characters as whitespace word separators', () => {
+      const result = wrapAnsi('hello\tworld', 6);
+      const lines = result.split('\n');
+      expect(strip(lines[0])).toMatch(/hello/);
+    });
   });
 });
 
