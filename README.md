@@ -215,16 +215,16 @@ convert.rgb.hsv(255, 136, 0);     // [32, 100, 100]
 convert.rgb.hwb(255, 136, 0);     // [32, 0, 0]
 convert.rgb.cmyk(255, 136, 0);    // [0, 47, 100, 0]
 convert.rgb.hex(255, 136, 0);     // '#ff8800'
-convert.rgb.ansi256(255, 136, 0); // 208
-convert.rgb.ansi16(255, 136, 0);  // 91
+convert.rgb.ansi256(255, 136, 0); // 214
+convert.rgb.ansi16(255, 136, 0);  // 93
 
 convert.hsl.rgb(32, 100, 50);     // [255, 136, 0]
 convert.hsv.rgb(32, 100, 100);    // [255, 136, 0]
 convert.hwb.rgb(32, 0, 0);        // [255, 136, 0]
 convert.cmyk.rgb(0, 47, 100, 0);  // [255, 135, 0]
 convert.hex.rgb('#ff8800');        // [255, 136, 0]
-convert.ansi256.rgb(208);         // [255, 135, 0]
-convert.ansi16.rgb(91);           // [255, 0, 0]
+convert.ansi256.rgb(214);         // [255, 175, 0]
+convert.ansi16.rgb(93);           // [255, 255, 0]
 convert.keyword.rgb('tomato');     // [255, 99, 71]
 ```
 
