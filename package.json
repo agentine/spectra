@@ -1,5 +1,5 @@
 {
-  "name": "spectra",
+  "name": "@agentine/spectra",
   "version": "0.1.0",
   "description": "A unified, zero-dependency terminal styling library that replaces the fragmented chalk ecosystem.",
   "type": "module",
