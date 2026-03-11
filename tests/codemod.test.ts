@@ -1,22 +1,25 @@
 /**
  * Tests for the chalk-to-spectra jscodeshift codemod.
  *
- * Since jscodeshift isn't a devDep, these tests verify the transform logic
- * by calling it with a minimal mock API. Each test provides input source
- * and asserts on the transformed output.
+ * These tests actually invoke the transform function via jscodeshift,
+ * verifying that chalk code is correctly rewritten to spectra.
  */
 
 import { describe, it, expect } from 'vitest';
+import jscodeshift from 'jscodeshift';
+import transform from '../codemods/chalk-to-spectra.js';
 
-// We test the codemod by running jscodeshift programmatically
-// Since jscodeshift is heavy, we use a lightweight approach:
-// just verify the expected transforms via string matching on known patterns.
+function applyTransform(input: string): string {
+  const result = transform(
+    { source: input, path: 'test.ts' },
+    { jscodeshift },
+    {},
+  );
+  // transform returns undefined if no changes; return original in that case
+  return result ?? input;
+}
 
-describe('chalk-to-spectra codemod (pattern verification)', () => {
-  // These tests document the expected transforms without requiring jscodeshift
-  // as a dependency. They verify the transform patterns by describing
-  // input → output pairs that the codemod should handle.
-
+describe('chalk-to-spectra codemod', () => {
   const transforms: Array<{ name: string; input: string; expected: string }> = [
     {
       name: 'ESM default import',
@@ -123,38 +126,24 @@ describe('chalk-to-spectra codemod (pattern verification)', () => {
 
   for (const { name, input, expected } of transforms) {
     it(`transforms: ${name}`, () => {
-      // Document the expected transform
-      // Each line in expected should be producible from input by:
-      // 1. "chalk" module source → "spectra" (with subpath mapping)
-      // 2. chalk identifier → spectra identifier
-      // Verify the expected output doesn't contain 'chalk' (except in comments/strings about chalk)
-      const lines = expected.split('\n');
-      for (const line of lines) {
-        // No remaining "chalk" as an identifier or module name
-        expect(line).not.toMatch(/\bchalk\b/);
-      }
-      // Verify input contains chalk
-      expect(input).toMatch(/\bchalk\b/);
-      // Verify structure is preserved (same number of lines)
-      expect(expected.split('\n').length).toBe(input.split('\n').length);
+      const result = applyTransform(input);
+      expect(result).toBe(expected);
     });
   }
 
   it('does not transform non-chalk imports', () => {
     const input = 'import picocolors from "picocolors";';
-    expect(input).not.toMatch(/\bchalk\b/);
+    const result = applyTransform(input);
+    expect(result).toBe(input);
   });
 
-  it('subpath mapping covers known chalk ecosystem paths', () => {
-    const mappings: Array<[string, string]> = [
-      ['chalk', 'spectra'],
-      ['chalk/ansi-styles', 'spectra/styles'],
-      ['chalk/supports-color', 'spectra/detect'],
-    ];
-    for (const [from, to] of mappings) {
-      expect(from).toBeTruthy();
-      expect(to).toBeTruthy();
-      expect(to.startsWith('spectra')).toBe(true);
-    }
+  it('returns undefined (no changes) for non-chalk code', () => {
+    const input = 'const x = 1;';
+    const result = transform(
+      { source: input, path: 'test.ts' },
+      { jscodeshift },
+      {},
+    );
+    expect(result).toBeUndefined();
   });
 });
