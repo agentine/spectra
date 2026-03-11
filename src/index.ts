@@ -14,6 +14,7 @@ import {
   rgbToAnsi16,
 } from './styles.js';
 import { colorLevel } from './detect.js';
+import { hslToRgb, hsvToRgb, hwbToRgb } from './convert.js';
 
 // Color level for the current process
 let currentLevel: 0 | 1 | 2 | 3 | undefined;
@@ -34,74 +35,6 @@ const allStaticStyles: Record<string, CodePair> = {
   ...fgColors,
   ...bgColors,
 };
-
-// HSL to RGB conversion
-function hslToRgb(h: number, s: number, l: number): [number, number, number] {
-  h = ((h % 360) + 360) % 360;
-  s = Math.max(0, Math.min(100, s)) / 100;
-  l = Math.max(0, Math.min(100, l)) / 100;
-
-  const c = (1 - Math.abs(2 * l - 1)) * s;
-  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-  const m = l - c / 2;
-
-  let r1: number, g1: number, b1: number;
-  if (h < 60) { r1 = c; g1 = x; b1 = 0; }
-  else if (h < 120) { r1 = x; g1 = c; b1 = 0; }
-  else if (h < 180) { r1 = 0; g1 = c; b1 = x; }
-  else if (h < 240) { r1 = 0; g1 = x; b1 = c; }
-  else if (h < 300) { r1 = x; g1 = 0; b1 = c; }
-  else { r1 = c; g1 = 0; b1 = x; }
-
-  return [
-    Math.round((r1 + m) * 255),
-    Math.round((g1 + m) * 255),
-    Math.round((b1 + m) * 255),
-  ];
-}
-
-// HSV to RGB conversion
-function hsvToRgb(h: number, s: number, v: number): [number, number, number] {
-  h = ((h % 360) + 360) % 360;
-  s = Math.max(0, Math.min(100, s)) / 100;
-  v = Math.max(0, Math.min(100, v)) / 100;
-
-  const c = v * s;
-  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-  const m = v - c;
-
-  let r1: number, g1: number, b1: number;
-  if (h < 60) { r1 = c; g1 = x; b1 = 0; }
-  else if (h < 120) { r1 = x; g1 = c; b1 = 0; }
-  else if (h < 180) { r1 = 0; g1 = c; b1 = x; }
-  else if (h < 240) { r1 = 0; g1 = x; b1 = c; }
-  else if (h < 300) { r1 = x; g1 = 0; b1 = c; }
-  else { r1 = c; g1 = 0; b1 = x; }
-
-  return [
-    Math.round((r1 + m) * 255),
-    Math.round((g1 + m) * 255),
-    Math.round((b1 + m) * 255),
-  ];
-}
-
-// HWB to RGB conversion
-function hwbToRgb(h: number, w: number, b: number): [number, number, number] {
-  w = Math.max(0, Math.min(100, w)) / 100;
-  b = Math.max(0, Math.min(100, b)) / 100;
-
-  if (w + b >= 1) {
-    const gray = Math.round((w / (w + b)) * 255);
-    return [gray, gray, gray];
-  }
-
-  const [r, g, bl] = hslToRgb(h, 100, 50);
-  return [
-    Math.round(r / 255 * (1 - w - b) * 255 + w * 255),
-    Math.round(g / 255 * (1 - w - b) * 255 + w * 255),
-    Math.round(bl / 255 * (1 - w - b) * 255 + w * 255),
-  ];
-}
 
 // Apply a code pair to a string, handling nesting by replacing close codes in the content
 function applyStyle(text: string, pair: CodePair, level: number): string {
