@@ -58,9 +58,9 @@ describe('spectra', () => {
 
     it('close+reopen: outer fg color resumes after nested fg color closes', () => {
       const result = spectra.red(`a ${spectra.blue('b')} c`);
-      // Inner blue close (\x1b[39m) should be replaced with close+reopen (\x1b[39m\x1b[31m)
+      // Inner blue close (\x1b[39m) is replaced with red re-open (\x1b[31m)
       // so outer red resumes after the inner blue section
-      expect(result).toBe('\x1b[31ma \x1b[34mb\x1b[39m\x1b[31m c\x1b[39m');
+      expect(result).toBe('\x1b[31ma \x1b[34mb\x1b[31m c\x1b[39m');
     });
   });
 

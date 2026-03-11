@@ -1,4 +1,8 @@
 // Main chalk-compatible styling API
+//
+// Performance: uses a shared prototype with lazy, self-caching getters
+// (defined ONCE) and a linked-list styler chain. createBuilder() is
+// lightweight: create function, setPrototypeOf, set 1 symbol.
 
 import {
   type CodePair,
@@ -36,24 +40,35 @@ const allStaticStyles: Record<string, CodePair> = {
   ...bgColors,
 };
 
-// Apply a code pair to a string, handling nesting by replacing close codes in the content
-function applyStyle(text: string, pair: CodePair, level: number): string {
-  if (level === 0) return text;
-  const { open, close } = pair;
-  // Handle nesting: replace any inner close with close+open to resume the style
-  let result = text;
-  if (result.includes(close)) {
-    result = result.replaceAll(close, close + open);
-  }
-  return open + result + close;
+// Linked-list styler — avoids array spreading on every chain step
+interface Styler {
+  open: string;
+  close: string;
+  openAll: string;
+  closeAll: string;
+  parent: Styler | undefined;
 }
 
-// Downgrade an RGB code pair based on the current color level
+const STYLER = Symbol('STYLER');
+
+function createStyler(open: string, close: string, parent?: Styler): Styler {
+  if (parent === undefined) {
+    return { open, close, openAll: open, closeAll: close, parent };
+  }
+  return {
+    open,
+    close,
+    openAll: parent.openAll + open,
+    closeAll: close + parent.closeAll,
+    parent,
+  };
+}
+
+// Downgrade an RGB color based on the current color level
 function downgradeFg(r: number, g: number, b: number, level: 0 | 1 | 2 | 3): CodePair | null {
   if (level === 0) return null;
   if (level >= 3) return rgbCode(r, g, b);
   if (level === 2) return ansi256Code(rgbToAnsi256(r, g, b));
-  // level 1: map to nearest basic ANSI color (codes 30-37, 90-97)
   const ansiCode = rgbToAnsi16(r, g, b);
   return { open: `\x1b[${ansiCode}m`, close: '\x1b[39m' };
 }
@@ -62,7 +77,6 @@ function downgradeBg(r: number, g: number, b: number, level: 0 | 1 | 2 | 3): Cod
   if (level === 0) return null;
   if (level >= 3) return bgRgbCode(r, g, b);
   if (level === 2) return bgAnsi256Code(rgbToAnsi256(r, g, b));
-  // level 1: map to nearest basic ANSI bg color (codes 40-47, 100-107)
   const ansiCode = rgbToAnsi16(r, g, b) + 10;
   return { open: `\x1b[${ansiCode}m`, close: '\x1b[49m' };
 }
@@ -143,125 +157,168 @@ interface SpectraInstance {
   template(str: string): string;
 }
 
-function createBuilder(pairs: CodePair[]): SpectraInstance {
-  // The callable function that applies all accumulated styles
-  const builder = function (...text: unknown[]): string {
-    const str = text.map(t => String(t)).join(' ');
-    const level = getLevel();
-    if (level === 0) return str;
-    let result = str;
-    // Apply styles in order (outermost first means we apply from last to first)
-    for (let i = pairs.length - 1; i >= 0; i--) {
-      result = applyStyle(result, pairs[i], level);
+// Apply styles using the linked-list styler
+function applyStyle(self: any, text: string): string {
+  const level = getLevel();
+  if (level === 0 || !text) return text;
+
+  let styler: Styler | undefined = self[STYLER];
+  if (styler === undefined) return text;
+
+  const { openAll, closeAll } = styler;
+
+  // Handle nesting: replace inner close codes with re-opener
+  if (text.includes('\x1b')) {
+    let s: Styler | undefined = styler;
+    while (s !== undefined) {
+      text = text.replaceAll(s.close, s.open);
+      s = s.parent;
     }
-    return result;
-  } as SpectraInstance;
-
-  // Level accessor
-  Object.defineProperty(builder, 'level', {
-    get: getLevel,
-    set: setLevel,
-    enumerable: true,
-  });
-
-  // Static style properties (lazy, cached)
-  const styleNames = Object.keys(allStaticStyles);
-  for (const name of styleNames) {
-    Object.defineProperty(builder, name, {
-      get() {
-        return createBuilder([...pairs, allStaticStyles[name]]);
-      },
-      enumerable: true,
-      configurable: true,
-    });
   }
 
-  // Dynamic fg color methods
-  builder.hex = (color: string) => {
-    const [r, g, b] = hexToRgb(color);
-    const level = getLevel();
-    const pair = downgradeFg(r, g, b, level);
-    return pair ? createBuilder([...pairs, pair]) : createBuilder([...pairs]);
-  };
-  builder.rgb = (r: number, g: number, b: number) => {
-    const level = getLevel();
-    const pair = downgradeFg(r, g, b, level);
-    return pair ? createBuilder([...pairs, pair]) : createBuilder([...pairs]);
-  };
-  builder.hsl = (h: number, s: number, l: number) => {
-    const [r, g, b] = hslToRgb(h, s, l);
-    const level = getLevel();
-    const pair = downgradeFg(r, g, b, level);
-    return pair ? createBuilder([...pairs, pair]) : createBuilder([...pairs]);
-  };
-  builder.hsv = (h: number, s: number, v: number) => {
-    const [r, g, b] = hsvToRgb(h, s, v);
-    const level = getLevel();
-    const pair = downgradeFg(r, g, b, level);
-    return pair ? createBuilder([...pairs, pair]) : createBuilder([...pairs]);
-  };
-  builder.hwb = (h: number, w: number, b: number) => {
-    const [r, g, bl] = hwbToRgb(h, w, b);
-    const level = getLevel();
-    const pair = downgradeFg(r, g, bl, level);
-    return pair ? createBuilder([...pairs, pair]) : createBuilder([...pairs]);
-  };
-  builder.ansi256 = (n: number) => {
-    return createBuilder([...pairs, ansi256Code(n)]);
-  };
-
-  // Dynamic bg color methods
-  builder.bgHex = (color: string) => {
-    const [r, g, b] = hexToRgb(color);
-    const level = getLevel();
-    const pair = downgradeBg(r, g, b, level);
-    return pair ? createBuilder([...pairs, pair]) : createBuilder([...pairs]);
-  };
-  builder.bgRgb = (r: number, g: number, b: number) => {
-    const level = getLevel();
-    const pair = downgradeBg(r, g, b, level);
-    return pair ? createBuilder([...pairs, pair]) : createBuilder([...pairs]);
-  };
-  builder.bgHsl = (h: number, s: number, l: number) => {
-    const [r, g, b] = hslToRgb(h, s, l);
-    const level = getLevel();
-    const pair = downgradeBg(r, g, b, level);
-    return pair ? createBuilder([...pairs, pair]) : createBuilder([...pairs]);
-  };
-  builder.bgHsv = (h: number, s: number, v: number) => {
-    const [r, g, b] = hsvToRgb(h, s, v);
-    const level = getLevel();
-    const pair = downgradeBg(r, g, b, level);
-    return pair ? createBuilder([...pairs, pair]) : createBuilder([...pairs]);
-  };
-  builder.bgHwb = (h: number, w: number, b: number) => {
-    const [r, g, bl] = hwbToRgb(h, w, b);
-    const level = getLevel();
-    const pair = downgradeBg(r, g, bl, level);
-    return pair ? createBuilder([...pairs, pair]) : createBuilder([...pairs]);
-  };
-  builder.bgAnsi256 = (n: number) => {
-    return createBuilder([...pairs, bgAnsi256Code(n)]);
-  };
-
-  // Template literal support: spectra.template('{red text} {bold.yellow warning}')
-  builder.template = (str: string): string => {
-    return str.replace(/\{([^\s}]+)\s+([^}]*)\}/g, (_match, styleStr: string, content: string) => {
-      const styleChain = styleStr.split('.');
-      let instance: SpectraInstance = spectra;
-      for (const s of styleChain) {
-        if (Object.hasOwn(allStaticStyles, s)) {
-          instance = (instance as unknown as Record<string, SpectraInstance>)[s];
-        }
-      }
-      return instance(content);
-    });
-  };
-
-  return builder;
+  return openAll + text + closeAll;
 }
 
-const spectra: SpectraInstance = createBuilder([]);
+// Helper to create a dynamic fg color method
+function makeFgDynamic(
+  toRgb: (...args: any[]) => [number, number, number],
+) {
+  return {
+    get(this: any) {
+      const parentStyler: Styler | undefined = this[STYLER];
+      return (...args: any[]) => {
+        const [r, g, b] = toRgb(...args);
+        const pair = downgradeFg(r, g, b, getLevel());
+        if (!pair) return createBuilder(parentStyler);
+        return createBuilder(createStyler(pair.open, pair.close, parentStyler));
+      };
+    },
+    configurable: true,
+    enumerable: true,
+  };
+}
+
+function makeBgDynamic(
+  toRgb: (...args: any[]) => [number, number, number],
+) {
+  return {
+    get(this: any) {
+      const parentStyler: Styler | undefined = this[STYLER];
+      return (...args: any[]) => {
+        const [r, g, b] = toRgb(...args);
+        const pair = downgradeBg(r, g, b, getLevel());
+        if (!pair) return createBuilder(parentStyler);
+        return createBuilder(createStyler(pair.open, pair.close, parentStyler));
+      };
+    },
+    configurable: true,
+    enumerable: true,
+  };
+}
+
+// ── Build shared prototype (ONCE) ──────────────────────────────────
+
+const styleDescriptors: PropertyDescriptorMap = {};
+
+// Static styles: lazy getters that cache on first access
+for (const [name, pair] of Object.entries(allStaticStyles)) {
+  styleDescriptors[name] = {
+    get(this: any) {
+      const builder = createBuilder(
+        createStyler(pair.open, pair.close, this[STYLER]),
+      );
+      // Cache: replace getter with direct value on this instance
+      Object.defineProperty(this, name, { value: builder });
+      return builder;
+    },
+    configurable: true,
+    enumerable: true,
+  };
+}
+
+// Dynamic fg color methods
+styleDescriptors.hex = makeFgDynamic((color: string) => hexToRgb(color));
+styleDescriptors.rgb = makeFgDynamic((r: number, g: number, b: number) => [r, g, b]);
+styleDescriptors.hsl = makeFgDynamic((h: number, s: number, l: number) => hslToRgb(h, s, l));
+styleDescriptors.hsv = makeFgDynamic((h: number, s: number, v: number) => hsvToRgb(h, s, v));
+styleDescriptors.hwb = makeFgDynamic((h: number, w: number, b: number) => hwbToRgb(h, w, b));
+styleDescriptors.ansi256 = {
+  get(this: any) {
+    const parentStyler: Styler | undefined = this[STYLER];
+    return (n: number) => {
+      const pair = ansi256Code(n);
+      return createBuilder(createStyler(pair.open, pair.close, parentStyler));
+    };
+  },
+  configurable: true,
+  enumerable: true,
+};
+
+// Dynamic bg color methods
+styleDescriptors.bgHex = makeBgDynamic((color: string) => hexToRgb(color));
+styleDescriptors.bgRgb = makeBgDynamic((r: number, g: number, b: number) => [r, g, b]);
+styleDescriptors.bgHsl = makeBgDynamic((h: number, s: number, l: number) => hslToRgb(h, s, l));
+styleDescriptors.bgHsv = makeBgDynamic((h: number, s: number, v: number) => hsvToRgb(h, s, v));
+styleDescriptors.bgHwb = makeBgDynamic((h: number, w: number, b: number) => hwbToRgb(h, w, b));
+styleDescriptors.bgAnsi256 = {
+  get(this: any) {
+    const parentStyler: Styler | undefined = this[STYLER];
+    return (n: number) => {
+      const pair = bgAnsi256Code(n);
+      return createBuilder(createStyler(pair.open, pair.close, parentStyler));
+    };
+  },
+  configurable: true,
+  enumerable: true,
+};
+
+// Template literal support
+styleDescriptors.template = {
+  get() {
+    return (str: string): string => {
+      return str.replace(/\{([^\s}]+)\s+([^}]*)\}/g, (_match, styleStr: string, content: string) => {
+        const styleChain = styleStr.split('.');
+        let instance: SpectraInstance = spectra;
+        for (const s of styleChain) {
+          if (Object.hasOwn(allStaticStyles, s)) {
+            instance = (instance as unknown as Record<string, SpectraInstance>)[s];
+          }
+        }
+        return instance(content);
+      });
+    };
+  },
+  configurable: true,
+  enumerable: true,
+};
+
+// Level property
+styleDescriptors.level = {
+  get() { return getLevel(); },
+  set(_v: number) { setLevel(_v as 0 | 1 | 2 | 3); },
+  enumerable: true,
+};
+
+// Create the shared prototype ONCE
+const proto = Object.defineProperties(() => {}, styleDescriptors);
+Object.setPrototypeOf(proto, Function.prototype);
+
+// ── Builder factory ────────────────────────────────────────────────
+
+function createBuilder(styler?: Styler): SpectraInstance {
+  // Hot path: single argument uses implicit coercion (faster than String())
+  const builder = (...text: unknown[]): string => {
+    const str = (text.length === 1) ? '' + text[0] : text.map(t => String(t)).join(' ');
+    return applyStyle(builder, str);
+  };
+
+  Object.setPrototypeOf(builder, proto);
+  (builder as any)[STYLER] = styler;
+
+  return builder as SpectraInstance;
+}
+
+const spectra: SpectraInstance = createBuilder();
 
 export default spectra;
 export { spectra };

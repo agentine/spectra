@@ -137,25 +137,25 @@ describe('chalk compatibility', () => {
   describe('nesting', () => {
     it('nested fg color: red wrapping blue — blue close re-opens red', () => {
       const result = spectra.red('a ' + spectra.blue('b') + ' c');
-      // chalk output: red opens, then blue opens for "b", blue closes (fg reset),
-      // red re-opens for " c", then red closes
+      // chalk output: red opens, then blue opens for "b", inner close is replaced
+      // by red re-open, then red closes at end
       expect(result).toBe(
-        `${open(31)}a ${open(34)}b${close(39)}${open(31)} c${close(39)}`
+        `${open(31)}a ${open(34)}b${open(31)} c${close(39)}`
       );
     });
 
     it('nested modifier: bold wrapping dim', () => {
       const result = spectra.bold('a ' + spectra.dim('b') + ' c');
-      // dim close (22) is same as bold close — chalk re-opens bold after dim closes
+      // dim close (22) is same as bold close — bold re-opens after dim closes
       expect(result).toBe(
-        `${open(1)}a ${open(2)}b${close(22)}${open(1)} c${close(22)}`
+        `${open(1)}a ${open(2)}b${open(1)} c${close(22)}`
       );
     });
 
     it('nested bg color: bgRed wrapping bgBlue', () => {
       const result = spectra.bgRed('a ' + spectra.bgBlue('b') + ' c');
       expect(result).toBe(
-        `${open(41)}a ${open(44)}b${close(49)}${open(41)} c${close(49)}`
+        `${open(41)}a ${open(44)}b${open(41)} c${close(49)}`
       );
     });
 
@@ -169,10 +169,10 @@ describe('chalk compatibility', () => {
     });
 
     it('same-close nesting: bold inside dim (both close with 22)', () => {
-      // When inner close === outer close, outer must re-open
+      // When inner close === outer close, it's replaced with outer re-open
       const result = spectra.dim('before ' + spectra.bold('inside') + ' after');
       expect(result).toBe(
-        `${open(2)}before ${open(1)}inside${close(22)}${open(2)} after${close(22)}`
+        `${open(2)}before ${open(1)}inside${open(2)} after${close(22)}`
       );
     });
   });
@@ -372,9 +372,9 @@ describe('chalk compatibility', () => {
   // 7. Edge cases
   // ──────────────────────────────────────────────
   describe('edge cases', () => {
-    it('empty string returns styled empty string', () => {
-      // chalk.red("") returns "\x1b[31m\x1b[39m"
-      expect(spectra.red('')).toBe(`${open(31)}${close(39)}`);
+    it('empty string returns empty string', () => {
+      // chalk.red("") returns "" (empty strings are not wrapped)
+      expect(spectra.red('')).toBe('');
     });
 
     it('undefined is coerced to "undefined"', () => {
@@ -393,9 +393,9 @@ describe('chalk compatibility', () => {
       expect(spectra.red(true)).toBe(`${open(31)}true${close(39)}`);
     });
 
-    it('no arguments returns empty styled string', () => {
-      // chalk.red() with no args returns "\x1b[31m\x1b[39m"
-      expect(spectra.red()).toBe(`${open(31)}${close(39)}`);
+    it('no arguments returns empty string', () => {
+      // chalk.red() with no args returns "" (empty strings are not wrapped)
+      expect(spectra.red()).toBe('');
     });
 
     it('multiple arguments are space-joined', () => {
