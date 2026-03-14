@@ -1,5 +1,10 @@
 # spectra
 
+[![npm](https://img.shields.io/npm/v/@agentine/spectra)](https://www.npmjs.com/package/@agentine/spectra)
+[![Node](https://img.shields.io/node/v/@agentine/spectra)](https://www.npmjs.com/package/@agentine/spectra)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)](https://www.typescriptlang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A unified, zero-dependency terminal styling library that replaces the fragmented chalk ecosystem.
 
 One package. One audit surface. Full chalk compatibility.
@@ -12,24 +17,24 @@ The chalk ecosystem spans 15+ interdependent packages collectively downloaded **
 
 | What you get | What it replaces |
 |---|---|
-| `spectra` (main API) | `chalk`, `ansi-styles` |
-| `spectra/strip` | `strip-ansi`, `ansi-regex`, `has-ansi` |
-| `spectra/detect` | `supports-color`, `supports-hyperlinks` |
-| `spectra/wrap` | `wrap-ansi`, `slice-ansi` |
-| `spectra/convert` | `color-convert`, `color-name` |
+| `@agentine/spectra` (main API) | `chalk`, `ansi-styles` |
+| `@agentine/spectra/strip` | `strip-ansi`, `ansi-regex`, `has-ansi` |
+| `@agentine/spectra/detect` | `supports-color`, `supports-hyperlinks` |
+| `@agentine/spectra/wrap` | `wrap-ansi`, `slice-ansi` |
+| `@agentine/spectra/convert` | `color-convert`, `color-name` |
 
 One codebase, one publish pipeline, one audit surface. The security benefit alone justifies the switch.
 
 ## Install
 
 ```sh
-npm install spectra
+npm install @agentine/spectra
 ```
 
 ## Quick start
 
 ```typescript
-import spectra from 'spectra';
+import spectra from '@agentine/spectra';
 
 // Basic styling
 spectra.red('Error!');
@@ -57,7 +62,7 @@ spectra.template('{red Error:} {bold.yellow critical} failure');
 ### Main API
 
 ```typescript
-import spectra from 'spectra';
+import spectra from '@agentine/spectra';
 ```
 
 #### Modifiers
@@ -143,12 +148,12 @@ spectra.level = 3; // Truecolor (16 million colors)
 
 Colors are automatically downgraded to match the terminal's capability. For example, `spectra.hex('#ff6600')` on a level 1 terminal emits the nearest basic ANSI color.
 
-### spectra/strip
+### @agentine/spectra/strip
 
 Strip, detect, and match ANSI escape codes.
 
 ```typescript
-import { strip, hasAnsi, ansiRegex } from 'spectra/strip';
+import { strip, hasAnsi, ansiRegex } from '@agentine/spectra/strip';
 
 strip('\x1b[31mhello\x1b[39m');   // 'hello'
 hasAnsi('\x1b[31mhello\x1b[39m'); // true
@@ -159,12 +164,12 @@ const regex = ansiRegex();         // RegExp matching all ANSI sequences
 
 Handles CSI sequences (colors/styles), OSC sequences (hyperlinks, terminal titles), and single-character escape sequences.
 
-### spectra/detect
+### @agentine/spectra/detect
 
 Detect terminal color support and hyperlink capability.
 
 ```typescript
-import { detectColors, colorLevel, supportsHyperlinks } from 'spectra/detect';
+import { detectColors, colorLevel, supportsHyperlinks } from '@agentine/spectra/detect';
 
 detectColors();
 // { level: 3, has256: true, has16m: true }
@@ -178,12 +183,12 @@ supportsHyperlinks(process.stdout);
 
 Detection respects `FORCE_COLOR`, `NO_COLOR`, `--no-color`, `--color`, `COLORTERM`, and `TERM` environment variables. It recognizes Windows Terminal, iTerm, Apple Terminal, VS Code, WezTerm, CI providers (GitHub Actions, Travis, CircleCI, GitLab CI, etc.), and standard terminal emulators.
 
-### spectra/wrap
+### @agentine/spectra/wrap
 
 ANSI-aware word wrapping, slicing, and truncation.
 
 ```typescript
-import { wrapAnsi, sliceAnsi, truncateAnsi } from 'spectra/wrap';
+import { wrapAnsi, sliceAnsi, truncateAnsi } from '@agentine/spectra/wrap';
 
 // Word-wrap at column 40, preserving ANSI styles across line breaks
 wrapAnsi(styledString, 40);
@@ -202,12 +207,12 @@ sliceAnsi(styledString, 5, 15);
 truncateAnsi(styledString, 20, '…');
 ```
 
-### spectra/convert
+### @agentine/spectra/convert
 
 Convert between color spaces. Replaces the `color-convert` and `color-name` packages.
 
 ```typescript
-import { convert } from 'spectra/convert';
+import { convert } from '@agentine/spectra/convert';
 
 // Structured API: convert.<from>.<to>(values)
 convert.rgb.hsl(255, 136, 0);     // [32, 100, 50]
@@ -233,7 +238,7 @@ All 148 CSS Color Level 4 named colors are supported via `convert.keyword.rgb()`
 Individual conversion functions are also exported for direct use:
 
 ```typescript
-import { rgbToHsl, hslToRgb, hexToRgb, rgbToHex } from 'spectra/convert';
+import { rgbToHsl, hslToRgb, hexToRgb, rgbToHex } from '@agentine/spectra/convert';
 
 rgbToHsl(255, 136, 0);  // [32, 100, 50]
 hslToRgb(32, 100, 50);  // [255, 136, 0]
@@ -244,7 +249,7 @@ hslToRgb(32, 100, 50);  // [255, 136, 0]
 ### Step 1: Install spectra
 
 ```sh
-npm install spectra
+npm install @agentine/spectra
 npm uninstall chalk ansi-styles supports-color strip-ansi ansi-regex has-ansi wrap-ansi slice-ansi color-convert color-name
 ```
 
@@ -254,7 +259,7 @@ For most projects, find and replace is all you need:
 
 ```diff
 - import chalk from 'chalk';
-+ import spectra from 'spectra';
++ import spectra from '@agentine/spectra';
 
 - chalk.red.bold('Error!')
 + spectra.red.bold('Error!')
@@ -269,10 +274,10 @@ For subpackages:
 - import { supportsColor } from 'supports-color';
 - import wrapAnsi from 'wrap-ansi';
 - import colorConvert from 'color-convert';
-+ import { strip } from 'spectra/strip';
-+ import { detectColors } from 'spectra/detect';
-+ import { wrapAnsi } from 'spectra/wrap';
-+ import { convert } from 'spectra/convert';
++ import { strip } from '@agentine/spectra/strip';
++ import { detectColors } from '@agentine/spectra/detect';
++ import { wrapAnsi } from '@agentine/spectra/wrap';
++ import { convert } from '@agentine/spectra/convert';
 ```
 
 ### Step 3: Automated migration (optional)
@@ -280,13 +285,13 @@ For subpackages:
 A jscodeshift codemod is included for automated migration:
 
 ```sh
-npx jscodeshift -t node_modules/spectra/codemods/chalk-to-spectra.ts --parser=tsx src/
+npx jscodeshift -t node_modules/@agentine/spectra/codemods/chalk-to-spectra.ts --parser=tsx src/
 ```
 
 The codemod handles:
 - Default, named, and namespace ESM imports
 - CommonJS `require()` calls
-- Subpath mapping (`chalk/ansi-styles` -> `spectra/styles`, `chalk/supports-color` -> `spectra/detect`)
+- Subpath mapping (`chalk/ansi-styles` -> `@agentine/spectra/styles`, `chalk/supports-color` -> `@agentine/spectra/detect`)
 - Renaming all `chalk` identifier references to `spectra`
 
 ### API equivalents
@@ -297,13 +302,13 @@ The codemod handles:
 | `chalk.hex('#ff6600')('text')` | `spectra.hex('#ff6600')('text')` |
 | `chalk.rgb(255, 136, 0)('text')` | `spectra.rgb(255, 136, 0)('text')` |
 | `chalk.level` | `spectra.level` |
-| `stripAnsi(str)` | `strip(str)` from `spectra/strip` |
-| `hasAnsi(str)` | `hasAnsi(str)` from `spectra/strip` |
-| `ansiRegex()` | `ansiRegex()` from `spectra/strip` |
-| `supportsColor.stdout` | `detectColors(process.stdout)` from `spectra/detect` |
-| `wrapAnsi(str, cols)` | `wrapAnsi(str, cols)` from `spectra/wrap` |
-| `colorConvert.rgb.hsl(r, g, b)` | `convert.rgb.hsl(r, g, b)` from `spectra/convert` |
-| `colorName['tomato']` | `convert.keyword.rgb('tomato')` from `spectra/convert` |
+| `stripAnsi(str)` | `strip(str)` from `@agentine/spectra/strip` |
+| `hasAnsi(str)` | `hasAnsi(str)` from `@agentine/spectra/strip` |
+| `ansiRegex()` | `ansiRegex()` from `@agentine/spectra/strip` |
+| `supportsColor.stdout` | `detectColors(process.stdout)` from `@agentine/spectra/detect` |
+| `wrapAnsi(str, cols)` | `wrapAnsi(str, cols)` from `@agentine/spectra/wrap` |
+| `colorConvert.rgb.hsl(r, g, b)` | `convert.rgb.hsl(r, g, b)` from `@agentine/spectra/convert` |
+| `colorName['tomato']` | `convert.keyword.rgb('tomato')` from `@agentine/spectra/convert` |
 
 ### Known differences
 

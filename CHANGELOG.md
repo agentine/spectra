@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- Package renamed from `spectra` to `@agentine/spectra` on npm (original name was taken)
+
 ## 0.1.0 (2026-03-10)
 
 Initial release of spectra — a unified, zero-dependency terminal styling library that replaces the fragmented chalk ecosystem.
